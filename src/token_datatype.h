@@ -1,5 +1,5 @@
-#ifndef TOKEN_H
-#define TOKEN_H
+#ifndef TOKEN_DATATYPE_H
+#define TOKEN_DATATYPE_H
 
 	#include "error.h"
 #include <stddef.h>
@@ -35,8 +35,4 @@
 		Token  tklist[]; //Da token list.
 	} TokenList;
 
-	extern TokenList* list_init(size_t);
-	extern void list_destroy(TokenList*);
-	extern Status list_expand(TokenList**, size_t);
-	extern Status list_append(TokenList**, Token*);
 #endif
