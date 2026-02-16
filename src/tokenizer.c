@@ -28,10 +28,9 @@ static size_t safe_size_calc(size_t capacity)
 	return sizeof(TokenList) + mul;
 }
 
-//construct helper.
+//create a token list which can hold 'capacity' tokens.
 TokenList* list_init(size_t capacity)
 {
-
 	size_t total_size = safe_size_calc(capacity);
 	if(total_size == 0) return NULL;
 
@@ -41,9 +40,9 @@ TokenList* list_init(size_t capacity)
 		list->length = 0;
 		list->capacity = capacity;
 	}
-
 	return list;
 }
+
 
 void list_destroy(TokenList* list)
 {
@@ -57,10 +56,9 @@ void list_destroy(TokenList* list)
 		}
 		free(list);
 	}
-	else
-		return;
 }
 
+//NOTE: could change the pointer that list_ptr point to. WATCH OUT!!!!!
 Status list_expand(TokenList** list_ptr, size_t new_cap)
 {
 	if (list_ptr == NULL) return FAILURE;
@@ -91,10 +89,11 @@ Status list_append(TokenList** list_ptr, Token* token)
 
 	if(list->length == list->capacity)
 	{
-		size_t new_size = (list->capacity==0)? 10 : list->capacity * 1.5;
+		size_t new_size = (list->capacity==0)? 10 : list->capacity * 3 / 2;
 		Status stat = list_expand(list_ptr, new_size);
-		if(status_isequal(stat, FAILURE))
+		if(status_isequal(stat, FAILURE) || status_isequal(stat, NOT_EXECUTE))
 			return FAILURE;
+		list = *list_ptr;
 	}
 
 	list->tklist[list->length++] = *token;

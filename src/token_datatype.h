@@ -12,7 +12,7 @@
 	    // Literals token
 	    LIT_INT, LIT_STR,
 	    // Misc token
-	    COMMA, SEMI, OPEN_PAREN, CLOSE_PAREN, OPEN_BRACE, CLOSE_BRACE, IDENTIFIER, EOF_TOKEN,
+	    COMMA, SEMI, OPEN_PAREN, CLOSE_PAREN, OPEN_BRACE, CLOSE_BRACE, IDENTIFIER, EOF_TOKEN, ERR_TOKEN
 	} TokenType;
 
 	typedef struct
@@ -22,7 +22,8 @@
 		union
 		{
 			long int int_val;
-			char    *str_val; //holds string literal and indentifier
+			char    *str_val; //holds string literal
+			char 	   *name; //Name of indentifier or keywords token
 		} data;
 
 	} Token;
