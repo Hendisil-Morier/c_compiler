@@ -1,17 +1,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
-
-typedef struct
-{
-	char** string;
-	size_t length;
-	size_t capacity;
-} stringIntern;
+#include "string_datatype.h"
 
 const char *Keywords[] =  {"int", "void", "return"};
 const size_t keywords_size = sizeof(Keywords) / sizeof(char*);
 const stringIntern keyword_intern = {Keywords, keywords_size, keywords_size}; //do not free this one
+stringIntern* ident_intern = NULL; //free this one instead
+
 
 stringIntern* new_interner()
 {
@@ -57,7 +53,7 @@ stringIntern* intern_append(stringIntern* intern, const char* str)
 	return intern;
 }
 
-const char* stringIntern_find(stringIntern* intern, const char* str)
+const char* stringIntern_find(const stringIntern* intern, const char* str)
 {
 	if (intern == NULL || str == NULL) return NULL;
 
@@ -69,12 +65,13 @@ const char* stringIntern_find(stringIntern* intern, const char* str)
 	return NULL;
 }
 
-void destroy_iden_intern(stringIntern* intern)
+void destroy_iden_intern()
 {
-	if (intern == NULL) return;
-	for(size_t i = 0; i < intern->length; i++)
-		free(intern->string[i]);
+	if (ident_intern == NULL) return;
+	if(ident_intern->string == NULL) return;
+	for(size_t i = 0; i < ident_intern->length; i++)
+		free(ident_intern->string[i]);
 
-	free(intern->string);
-	free(intern);
+	free(ident_intern->string);
+	free(ident_intern);
 }

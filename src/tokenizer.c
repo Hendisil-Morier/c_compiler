@@ -47,15 +47,8 @@ TokenList* list_init(size_t capacity)
 void list_destroy(TokenList* list)
 {
 	if(list != NULL)
-	{
-		for(size_t i = 0; i < list->length; i++)
-		{
-			TokenType t = list->tklist[i].type;
-			if(t == LIT_STR || t == IDENTIFIER)
-				free(list->tklist[i].data.str_val);
-		}
 		free(list);
-	}
+
 }
 
 //NOTE: could change the pointer that list_ptr point to. WATCH OUT!!!!!

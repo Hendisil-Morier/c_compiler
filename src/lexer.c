@@ -1,28 +1,30 @@
 #include <stdio.h>
+#include <string.h>
 #include "error.h"
 #include "token_datatype.h"
 #include "tokenizer.h"
+#include "string_interner.h"
 
 // insanely unsafe.
-// for convinient only. this thing have no type check.
+// for convinient only. these thing have only one use and will fuck the code up in other places.
 #define iden_condition(x) (x >= 'A' && x <= 'Z' || x >= 'a' && x <= 'z' || x == '_')
+#define is_single(c) (cur_char == c)
+#define IDENT_BUFFER_SIZE 256
 
-FILE* inFile;
-typedef int char_f; //using int to hold char look illogical
-typedef struct
-{
-	const char_f* cur; //current character
-	int line;
-} Lexer;
+extern FILE* inFile;
 
 void skip_whitespace(Lexer* lex)
 {
-	char_f c = *(lex->cur);
-
-	while (c == ' ' || c == '\t' || c == '\f' || c == '\n' || c == '\r' || c == '\v')
+	while (1)
 	{
+		char_f c = *(lex->cur);
+		if(c==EOF) break;
 		if(c=='\n') lex->line++;
-		c = *(lex->cur++);
+		if(c == ' ' || c == '\t' || c == '\f' || c == '\n' || c == '\r' || c == '\v')
+		{
+			(lex->cur++);
+		}
+		else break;
 	}
 }
 
@@ -37,77 +39,101 @@ Status read_file(const char* path)
 
 TokenList* get_token(Lexer* lex)
 {
-	lex->line = 1;
 
 	TokenList* new_list = list_init(10);
 	if (new_list == NULL) return NULL;
 	Status st = FAILURE;
-	char_f cur_char;
+	char_f cur_char = *lex->cur;
 
-	while((cur_char = *lex->cur) != EOF)
+	while(1)
 	{
+		if(cur_char == EOF) break;
 		skip_whitespace(lex);
+		cur_char = *lex->cur;
 		Token new_token = {0};
-		switch (cur_char)
-		{
-		case '(' :
-			lex->cur++;
-			new_token.type = OPEN_PAREN;
-			break;
-		case ')' :
-			lex->cur++;
-			new_token.type = CLOSE_PAREN;
-			break;
-		case '{' :
-			lex->cur++;
-			new_token.type = OPEN_BRACE;
-			break;
-		case '}' :
-			lex->cur++;
-			new_token.type = CLOSE_BRACE;
-			break;
-		case ',' :
-			lex->cur++;
-			new_token.type = COMMA;
-			break;
-		case ';' :
-			lex->cur++;
-			new_token.type = SEMI;
-			break;
-		}
 
-		if (cur_char >= '0' && cur_char <= '9')
+		if (is_single('('))
 		{
-			char_f c = *lex->cur;
+			lex->cur++; new_token.type = OPEN_PAREN;
+		}
+		else if (is_single(')'))
+		{
+			lex->cur++; new_token.type = CLOSE_PAREN;
+		}
+		else if (is_single('{'))
+		{
+			lex->cur++;	new_token.type = OPEN_BRACE;
+		}
+		else if (is_single('}'))
+		{
+			lex->cur++;	new_token.type = CLOSE_BRACE;
+		}
+		else if (is_single(','))
+		{
+			lex->cur++;	new_token.type = COMMA;
+		}
+		else if (is_single(';'))
+		{
+			lex->cur++;	new_token.type = SEMI;
+		}
+		else if (cur_char >= '0' && cur_char <= '9')
+		{
 			int value = 0;
-			while(c >= '0' && c <= '9')
+			while(*lex->cur >= '0' && *lex->cur <= '9')
 			{
-				value = value*10 + (c - '0');
-				c = *(lex->cur++);
+				value = value*10 + (*lex->cur - '0');
+				lex->cur++;
 			}
 			new_token.type = LIT_INT;
 			new_token.data.int_val  = value;
 		}
-
-		if (iden_condition(cur_char))
+		else if (iden_condition(cur_char))
 		{
-			char_f c = *lex->cur++;
-			while (c >= '0' && c <= '9' || iden_condition(c))
-			{
+    		char buffer[IDENT_BUFFER_SIZE];
+     		size_t i = 0;
 
-			}
+		    // Read characters while they are valid identifier chars
+		    while (i < IDENT_BUFFER_SIZE - 1 && (iden_condition(*lex->cur) || (*lex->cur >= '0' && *lex->cur <= '9')))
+			{
+		        buffer[i++] = *lex->cur;
+		        lex->cur++;
+		    }
+		    buffer[i] = '\0';
+
+		    // Check if it's a keyword
+		    if (strcmp(buffer, "int") == 0)
+		        new_token.type = KEYW_INT;
+		    else if (strcmp(buffer, "return") == 0)
+		        new_token.type = KEYW_RETURN;
+		    else if (strcmp(buffer, "void") == 0)
+		        new_token.type = KEYW_VOID;
+		    else
+		    {
+		        // It's an identifier – intern it
+		        const char* interned = stringIntern_find(ident_intern, buffer);
+		        if (!interned) {
+		            // Not yet interned: add it
+		            intern_append(ident_intern, buffer);
+		            interned = ident_intern->string[ident_intern->length - 1]; // pointer to the new copy
+		        }
+		        new_token.type = IDENTIFIER;
+		        new_token.data.iden_name = (char*)interned;   // cast away const – but the interner owns it
+		    }
+		}
+		else
+		{
+			lex->cur++;
+			new_token.type = ERR_TOKEN;
+			//continue;
 		}
 
 		new_token.line = lex->line;
 		st = list_append(&new_list, &new_token);
-		if (status_isequal(st, FAILURE)) return NULL;
+		if (status_isequal(st, FAILURE))
+			{list_destroy(new_list); return NULL;}
 	}
 
-	if(cur_char == EOF)
-	{
-		Token eof_tok = {.type = EOF_TOKEN};
-		list_append(&new_list, &eof_tok);
-	}
-
-
+	Token eof_tok = {.type = EOF_TOKEN};
+	list_append(&new_list, &eof_tok);
+	return new_list;
 }
