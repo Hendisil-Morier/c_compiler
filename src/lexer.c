@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "error.h"
 #include "token_datatype.h"
 #include "tokenizer.h"
@@ -37,6 +38,22 @@ Status read_file(const char* path)
 	return SUCCESS;
 }
 
+bool is_keywords(const char* buffer, Token* new_token)
+{
+	if(buffer == NULL || new_token == NULL) return false;
+
+	for (size_t i = 0; i < (sizeof(keyword_list)/sizeof(keyword_list[0])); i++)
+	{
+		if (strcmp(buffer, keyword_list[i].c) == 0)
+		{
+			new_token->type = keyword_list[i].type;
+			return true;
+		}
+		else return false;
+	}
+	return false;
+}
+
 TokenList* get_token(Lexer* lex)
 {
 
@@ -47,10 +64,10 @@ TokenList* get_token(Lexer* lex)
 
 	while(1)
 	{
-		if(cur_char == EOF) break;
 		skip_whitespace(lex);
 		cur_char = *lex->cur;
 		Token new_token = {0};
+		if(cur_char == EOF) break;
 
 		if (is_single('('))
 		{
@@ -75,6 +92,91 @@ TokenList* get_token(Lexer* lex)
 		else if (is_single(';'))
 		{
 			lex->cur++;	new_token.type = SEMI;
+		}
+		else if (is_single('['))
+		{
+			lex->cur++; new_token.type = OPEN_BRACK;
+		}
+		else if (is_single(']'))
+		{
+			lex->cur++; new_token.type = CLOSE_BRACK;
+		}
+		else if (is_single('='))
+		{
+			if (*(lex->cur + 1) == '=')
+			{
+				new_token.type = EQUAL_TOKEN;
+				lex->cur += 2;
+			}
+			else
+			{
+				new_token.type = ASSIGN_TOKEN;
+			}
+		}
+		else if(is_single('+'))
+		{
+			if (*(lex->cur + 1) == '=')
+			{
+				new_token.type = ADD_ASSIGN;
+				lex->cur += 2;
+			}
+			else if (*(lex->cur + 1) == '+')
+			{
+				new_token.type = INCREMENT;
+				lex->cur += 2;
+			}
+			else
+			{
+				new_token.type = PLUS_TOKEN;
+				lex->cur++;
+			}
+		}
+		else if (is_single('-'))
+		{
+			if (*(lex->cur + 1) == '-')
+			{
+				new_token.type = DECREMENT;
+				lex->cur += 2;
+			}
+			else if (*(lex->cur + 1) == '=')
+			{
+				new_token.type = SUB_ASSIGN;
+				lex->cur+=2;
+			}
+			else
+			{
+				new_token.type = MINUS_TOKEN;
+				lex->cur++;
+			}
+		}
+		else if (is_single('#'))
+		{
+			char buffer[IDENT_BUFFER_SIZE];
+     		size_t i = 0;
+       		lex->cur++;
+
+         	while(*lex->cur == ' ' || *lex->cur == '\t')
+          		lex->cur++;
+
+       		// Read characters while they are valid identifier chars
+         	while (i < IDENT_BUFFER_SIZE - 1 && (iden_condition(*lex->cur) || (*lex->cur >= '0' && *lex->cur <= '9')))
+			{
+		       buffer[i++] = *lex->cur;
+		       lex->cur++;
+			}
+          	buffer[i] = '\0';
+
+           	// Check if it's a directive
+			if (strcmp(buffer, "include") == 0)
+		    	new_token.type = PRE_INCLUDE;
+			else if (strcmp(buffer, "define") == 0)
+		    	new_token.type = PRE_DEFINE;
+			else if (strcmp(buffer, "if") == 0)
+				new_token.type = PRE_IF;
+			else if (strcmp(buffer, "endif") == 0)
+				new_token.type = PRE_ENDIF;
+			else
+				new_token.type = ERR_TOKEN;
 		}
 		else if (cur_char >= '0' && cur_char <= '9')
 		{
@@ -101,13 +203,25 @@ TokenList* get_token(Lexer* lex)
 		    buffer[i] = '\0';
 
 		    // Check if it's a keyword
-		    if (strcmp(buffer, "int") == 0)
+			if (strcmp(buffer, "int") == 0)
 		        new_token.type = KEYW_INT;
-		    else if (strcmp(buffer, "return") == 0)
+			else if (strcmp(buffer, "return") == 0)
 		        new_token.type = KEYW_RETURN;
-		    else if (strcmp(buffer, "void") == 0)
+			else if (strcmp(buffer, "void") == 0)
 		        new_token.type = KEYW_VOID;
-		    else
+			else if (strcmp(buffer, "typedef") == 0)
+				new_token.type = KEYW_TYPEDEF;
+			else if (strcmp(buffer, "for") == 0)
+				new_token.type = KEYW_FOR;
+			else if (strcmp(buffer, "while") == 0)
+				new_token.type = KEYW_WHILE;
+			else if (strcmp(buffer, "do") == 0)
+				new_token.type = KEYW_DO;
+			else if (strcmp(buffer, "if") == 0)
+				new_token.type = KEYW_IF;
+			else if (strcmp(buffer, "else") == 0)
+				new_token.type = KEYW_ELSE;
+			else
 		    {
 		        // It's an identifier – intern it
 		        const char* interned = stringIntern_find(ident_intern, buffer);

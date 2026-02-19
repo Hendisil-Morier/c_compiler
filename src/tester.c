@@ -78,7 +78,6 @@ int main(int argc, const char* argv[])
     // Print tokens (for testing)
     for (size_t i = 0; i < tokens->length; i++) {
         Token t = tokens->tklist[i];
-        printf("%zu", i);
         printf("Line %d: %s", t.line, token_type_name(t.type));
         if (t.type == LIT_INT) {
             printf(" (%ld)", t.data.int_val);
