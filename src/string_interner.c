@@ -3,9 +3,6 @@
 #include <stddef.h>
 #include "string_datatype.h"
 
-const char *Keywords[] =  {"int", "void", "return"};
-const size_t keywords_size = sizeof(Keywords) / sizeof(char*);
-const stringIntern keyword_intern = {(char**)Keywords, keywords_size, keywords_size}; //do not free this one
 stringIntern* ident_intern = NULL; //free this one instead
 
 

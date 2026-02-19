@@ -3,9 +3,6 @@
 
 	#include "string_datatype.h"
 
-	extern const char* Keywords[];
-	extern const size_t keywords_size;
-	extern const stringIntern keyword_intern;
 	extern stringIntern* ident_intern;
 
 	stringIntern* new_interner();

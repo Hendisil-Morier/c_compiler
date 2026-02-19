@@ -14,6 +14,42 @@
 
 extern FILE* inFile;
 
+const LookupList keyword_list[] =
+	{
+ 		{"auto",        KEYW_AUTO},
+	    {"break",       KEYW_BREAK},
+	    {"case",        KEYW_CASE},
+	    {"char",        KEYW_CHAR},
+	    {"const",       KEYW_CONST},
+	    {"continue",    KEYW_CONTINUE},
+	    {"default",     KEYW_DEFAULT},
+	    {"do",          KEYW_DO},
+	    {"double",      KEYW_DOUBLE},
+	    {"else",        KEYW_ELSE},
+	    {"enum",        KEYW_ENUM},
+	    {"extern",      KEYW_EXTERN},
+	    {"float",       KEYW_FLOAT},
+	    {"for",         KEYW_FOR},
+	    {"goto",        KEYW_GOTO},
+	    {"if",          KEYW_IF},
+	    {"int",         KEYW_INT},
+	    {"long",        KEYW_LONG},
+	    {"register",    KEYW_REGISTER},
+	    {"return",      KEYW_RETURN},
+	    {"short",       KEYW_SHORT},
+	    {"signed",      KEYW_SIGNED},
+	    {"sizeof",      SIZEOF_OP},
+	    {"static",      KEYW_STATIC},
+	    {"struct",      KEYW_STRUCT},
+	    {"switch",      KEYW_SWITCH},
+	    {"typedef",     KEYW_TYPEDEF},
+	    {"union",       KEYW_UNION},
+	    {"unsigned",    KEYW_UNSIGNED},
+	    {"void",        KEYW_VOID},
+	    {"volatile",    KEYW_VOLATILE},
+	    {"while",       KEYW_WHILE},
+	};
+
 void skip_whitespace(Lexer* lex)
 {
 	while (1)
@@ -49,9 +85,13 @@ bool is_keywords(const char* buffer, Token* new_token)
 			new_token->type = keyword_list[i].type;
 			return true;
 		}
-		else return false;
 	}
 	return false;
+}
+
+void is_operator(const char cur_char, Token* new_token)
+{
+//unfinished
 }
 
 TokenList* get_token(Lexer* lex)
@@ -101,6 +141,24 @@ TokenList* get_token(Lexer* lex)
 		{
 			lex->cur++; new_token.type = CLOSE_BRACK;
 		}
+		else if (is_single('/'))
+		{
+			if(*(lex->cur + 1) == '/')
+			{
+				while(*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+				continue;
+			}
+			else if (*(lex->cur + 1) == '=')
+			{
+				new_token.type = DIV_ASSIGN;
+				lex->cur += 2;
+			}
+			else
+			{
+				new_token.type = SLASH_TOKEN;
+				lex->cur++;
+			}
+		}
 		else if (is_single('='))
 		{
 			if (*(lex->cur + 1) == '=')
@@ -111,6 +169,7 @@ TokenList* get_token(Lexer* lex)
 			else
 			{
 				new_token.type = ASSIGN_TOKEN;
+				lex->cur++;
 			}
 		}
 		else if(is_single('+'))
@@ -175,6 +234,8 @@ TokenList* get_token(Lexer* lex)
 				new_token.type = PRE_IF;
 			else if (strcmp(buffer, "endif") == 0)
 				new_token.type = PRE_ENDIF;
+			else if (strcmp(buffer, "ifndef") == 0)
+				new_token.type = PRE_IFNDEF;
 			else
 				new_token.type = ERR_TOKEN;
 		}
@@ -203,24 +264,8 @@ TokenList* get_token(Lexer* lex)
 		    buffer[i] = '\0';
 
 		    // Check if it's a keyword
-			if (strcmp(buffer, "int") == 0)
-		        new_token.type = KEYW_INT;
-			else if (strcmp(buffer, "return") == 0)
-		        new_token.type = KEYW_RETURN;
-			else if (strcmp(buffer, "void") == 0)
-		        new_token.type = KEYW_VOID;
-			else if (strcmp(buffer, "typedef") == 0)
-				new_token.type = KEYW_TYPEDEF;
-			else if (strcmp(buffer, "for") == 0)
-				new_token.type = KEYW_FOR;
-			else if (strcmp(buffer, "while") == 0)
-				new_token.type = KEYW_WHILE;
-			else if (strcmp(buffer, "do") == 0)
-				new_token.type = KEYW_DO;
-			else if (strcmp(buffer, "if") == 0)
-				new_token.type = KEYW_IF;
-			else if (strcmp(buffer, "else") == 0)
-				new_token.type = KEYW_ELSE;
+			if (is_keywords(buffer, &new_token))
+			{;}
 			else
 		    {
 		        // It's an identifier – intern it

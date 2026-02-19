@@ -7,10 +7,14 @@
 	{
 		ERR_TOKEN = 0,
 	    // kinda operators token
-	    ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, INCREMENT, DECREMENT, ASSIGN_TOKEN,
-		PLUS_TOKEN, MINUS_TOKEN, ASTERISK_TOKEN, SLASH_TOKEN, EQUAL_TOKEN,
+	    ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, INCREMENT, DECREMENT, ASSIGN_TOKEN, MODULO,
+		PLUS_TOKEN, MINUS_TOKEN, ASTERISK_TOKEN, SLASH_TOKEN, EQUAL_TOKEN, COLON, QUESTION, DOT,
+		MOD_ASSIGN, AND_ASSIGN, OR_ASSIGN, XOR_ASSIGN, LEFT_ASSIGN, RIGHT_ASSIGN,
+		AMP_TOKEN, CARET_TOKEN, PIPE_TOKEN, TILDE_TOKEN, EXCLAIM_TOKEN, LT_TOKEN, GT_TOKEN,
+		NEGATE_TOKEN, LE_TOKEN, GE_TOKEN, LOGICAL_AND, LOGICAL_OR, LEFT_SHIFT, RIGHT_SHIFT,
 		//preprocessor directives
-		PRE_INCLUDE, PRE_DEFINE, PRE_IF, PRE_IFNDEF, PRE_ELSE, PRE_ELIF, PRE_ENDIF,
+		PRE_INCLUDE, PRE_DEFINE, PRE_IF, PRE_IFNDEF, PRE_ELSE, PRE_ELIF, PRE_ENDIF, PRE_IFDEF, PRE_UNDEF,
+		PRE_PRAGMA, PRE_ERROR, PRE_LINE,
 	    // Keywords token
 	    KEYW_INT, KEYW_VOID, KEYW_RETURN, KEYW_TYPEDEF, KEYW_IF, KEYW_ELSE, KEYW_CONST, KEYW_DEFAULT, KEYW_DOUBLE,
 		KEYW_EXTERN, KEYW_CASE, KEYW_CONTINUE, KEYW_FLOAT, KEYW_SHORT, KEYW_REGISTER, KEYW_GOTO, KEYW_AUTO, KEYW_SIGNED, SIZEOF_OP,
@@ -30,7 +34,7 @@
 		{
 			long int int_val;
 			char*	 str_val; //holds string literal
-			char* 	 iden_name; //Name of indentifier
+			const char* 	 iden_name; //Name of indentifier
 		} data;
 
 	} Token;
@@ -52,42 +56,6 @@
 	{
 		const char* c;
 		TokenType type;
-	} KeywordList;
-
-	const KeywordList keyword_list[] =
-	{
-  		{"auto",        KEYW_AUTO},
-	    {"break",       KEYW_BREAK},
-	    {"case",        KEYW_CASE},
-	    {"char",        KEYW_CHAR},
-	    {"const",       KEYW_CONST},
-	    {"continue",    KEYW_CONTINUE},
-	    {"default",     KEYW_DEFAULT},
-	    {"do",          KEYW_DO},
-	    {"double",      KEYW_DOUBLE},
-	    {"else",        KEYW_ELSE},
-	    {"enum",        KEYW_ENUM},
-	    {"extern",      KEYW_EXTERN},
-	    {"float",       KEYW_FLOAT},
-	    {"for",         KEYW_FOR},
-	    {"goto",        KEYW_GOTO},
-	    {"if",          KEYW_IF},
-	    {"int",         KEYW_INT},
-	    {"long",        KEYW_LONG},
-	    {"register",    KEYW_REGISTER},
-	    {"return",      KEYW_RETURN},
-	    {"short",       KEYW_SHORT},
-	    {"signed",      KEYW_SIGNED},
-	    {"sizeof",      SIZEOF_OP},
-	    {"static",      KEYW_STATIC},
-	    {"struct",      KEYW_STRUCT},
-	    {"switch",      KEYW_SWITCH},
-	    {"typedef",     KEYW_TYPEDEF},
-	    {"union",       KEYW_UNION},
-	    {"unsigned",    KEYW_UNSIGNED},
-	    {"void",        KEYW_VOID},
-	    {"volatile",    KEYW_VOLATILE},
-	    {"while",       KEYW_WHILE},
-	};
+	} LookupList;
 
 #endif
