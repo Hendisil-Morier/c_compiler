@@ -4,6 +4,7 @@
 #include "string_datatype.h"
 
 stringIntern* ident_intern = NULL; //free this one instead
+stringIntern* str_literal_intern = NULL; //free this one too
 
 
 stringIntern* new_interner()
@@ -62,13 +63,13 @@ const char* stringIntern_find(const stringIntern* intern, const char* str)
 	return NULL;
 }
 
-void destroy_iden_intern()
+void destroy_intern(stringIntern* intern)
 {
-	if (ident_intern == NULL) return;
-	if(ident_intern->string == NULL) return;
-	for(size_t i = 0; i < ident_intern->length; i++)
-		free(ident_intern->string[i]);
+	if (intern == NULL) return;
+	if(intern->string == NULL) return;
+	for(size_t i = 0; i < intern->length; i++)
+		free(intern->string[i]);
 
-	free(ident_intern->string);
-	free(ident_intern);
+	free(intern->string);
+	free(intern);
 }

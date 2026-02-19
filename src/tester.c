@@ -50,10 +50,11 @@ const char* token_type_name(TokenType t) {
         case XOR_ASSIGN:    return "XOR_ASSIGN";     // '^='
         case LEFT_ASSIGN:   return "LEFT_ASSIGN";    // '<<='
         case RIGHT_ASSIGN:  return "RIGHT_ASSIGN";   // '>>='
+        case ARROW: 		return "ARROW";
 
         // Logical and comparison operators
         case EQUAL_TOKEN:      return "EQUAL";              // '=='
-        case NEGATE_TOKEN:      return "NEGATE";              // '!='
+        case NEQUAL_TOKEN:      return "NEQUAL";              // '!='
         case LE_TOKEN:      return "LE";              // '<='
         case GE_TOKEN:      return "GE";              // '>='
         case LOGICAL_AND:   return "LOGICAL_AND";     // '&&'
@@ -139,8 +140,8 @@ const char* token_type_name(TokenType t) {
 
         // Literals
         case LIT_INT:        return "LIT_INT";
-        //case LIT_STR:        return "LIT_STR";
-        //case LIT_CHAR:       return "LIT_CHAR";      // if you add character literals
+        case LIT_STR:        return "LIT_STR";
+        case LIT_CHAR:       return "LIT_CHAR";      // if you add character literals
         //case LIT_FLOAT:      return "LIT_FLOAT";     // if you add floating point
 
         // Identifiers and special tokens
@@ -155,6 +156,7 @@ const char* token_type_name(TokenType t) {
 int main(int argc, const char* argv[])
 {
 	ident_intern = new_interner();
+	str_literal_intern = new_interner();
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
         return 1;
@@ -208,14 +210,23 @@ int main(int argc, const char* argv[])
         if (t.type == LIT_INT) {
             printf(" (%ld)", t.data.int_val);
         } else if (t.type == IDENTIFIER) {
-            printf(" (%s)", t.data.iden_name ? t.data.iden_name : "?");
+            printf(" (%s)", t.data.iden_name);
+        }
+        else if (t.type == LIT_STR)
+        {
+        	printf(" (%s)", t.data.str_val);
+        }
+        else if (t.type == LIT_CHAR)
+        {
+        	printf(" (%c)", t.data.char_val);
         }
         printf("\n");
     }
 
     // Clean up
     list_destroy(tokens);
-    destroy_iden_intern();
+    destroy_intern(ident_intern);
+    destroy_intern(str_literal_intern);
     free(buffer);
     return 0;
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "error.h"
 #include "token_datatype.h"
 #include "tokenizer.h"
@@ -141,11 +142,32 @@ TokenList* get_token(Lexer* lex)
 		{
 			lex->cur++; new_token.type = CLOSE_BRACK;
 		}
+		else if (is_single('.'))
+		{
+			lex->cur++; new_token.type = DOT;
+		}
 		else if (is_single('/'))
 		{
 			if(*(lex->cur + 1) == '/')
 			{
 				while(*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+				continue;
+			}
+			else if (*(lex->cur + 1) == '*')
+			{
+				lex->cur+=2;
+				while(*lex->cur != EOF)
+				{
+					if(*lex->cur == '*' && *(lex->cur + 1) == '/')
+					{
+						lex->cur+=2; break;
+					}
+					lex->cur++;
+				}
+				if (*lex->cur==EOF)
+				{
+					new_token.type = ERR_TOKEN;
+				}
 				continue;
 			}
 			else if (*(lex->cur + 1) == '=')
@@ -202,10 +224,324 @@ TokenList* get_token(Lexer* lex)
 				new_token.type = SUB_ASSIGN;
 				lex->cur+=2;
 			}
+			else if (*(lex->cur + 1) == '>')
+			{
+				new_token.type = ARROW;
+				lex->cur+=2;
+			}
 			else
 			{
 				new_token.type = MINUS_TOKEN;
 				lex->cur++;
+			}
+		}
+		else if (is_single('<'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = LE_TOKEN;
+		        lex->cur += 2;
+		    }
+		    else if (*(lex->cur + 1) == '<')
+		    {
+		        // left shift
+		        if (*(lex->cur + 2) == '=')
+		        {
+		            new_token.type = LEFT_ASSIGN;
+		            lex->cur += 3;
+		        }
+		        else
+		        {
+		            new_token.type = LEFT_SHIFT;
+		            lex->cur += 2;
+		        }
+		    }
+		    else
+		    {
+		        new_token.type = LT_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('>'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = GE_TOKEN;
+		        lex->cur += 2;
+		    }
+		    else if (*(lex->cur + 1) == '>')
+		    {
+		        // left shift
+		        if (*(lex->cur + 2) == '=')
+		        {
+		            new_token.type = RIGHT_ASSIGN;
+		            lex->cur += 3;
+		        }
+		        else
+		        {
+		            new_token.type = RIGHT_SHIFT;
+		            lex->cur += 2;
+		        }
+		    }
+		    else
+		    {
+		        new_token.type = GT_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('*'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = MUL_ASSIGN;
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = ASTERISK_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('%'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = MOD_ASSIGN;
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = MODULO;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('&'))
+		{
+		    if (*(lex->cur + 1) == '&')
+		    {
+		        new_token.type = LOGICAL_AND;
+		        lex->cur += 2;
+		    }
+		    else if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = AND_ASSIGN;
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = AMP_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('|'))
+		{
+		    if (*(lex->cur + 1) == '|')
+		    {
+		        new_token.type = LOGICAL_OR;
+		        lex->cur += 2;
+		    }
+		    else if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = OR_ASSIGN;
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = PIPE_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('^'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = XOR_ASSIGN;
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = CARET_TOKEN;
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('~'))
+		{
+		    new_token.type = TILDE_TOKEN;
+		    lex->cur++;
+		}
+		else if (is_single('!'))
+		{
+		    if (*(lex->cur + 1) == '=')
+		    {
+		        new_token.type = NEQUAL_TOKEN;   // !=
+		        lex->cur += 2;
+		    }
+		    else
+		    {
+		        new_token.type = EXCLAIM_TOKEN;  // !
+		        lex->cur++;
+		    }
+		}
+		else if (is_single('?'))
+		{
+		    new_token.type = QUESTION;
+		    lex->cur++;
+		}
+		else if (is_single(':'))
+		{
+		    new_token.type = COLON;
+		    lex->cur++;
+		}
+		else if (is_single('"'))
+		{
+		    // Consume the opening quote
+		    lex->cur++;
+
+		    // Dynamically growable buffer for the string content
+		    size_t cap = 32;
+		    size_t len = 0;
+		    char *buffer = malloc(cap);
+			if (!buffer) {
+		        // Out of memory – set error token and abort
+		        new_token.type = ERR_TOKEN;
+		        // Optionally, skip to closing quote or newline to recover
+		        while (*lex->cur != '"' && *lex->cur != '\n' && *lex->cur != EOF)
+		            lex->cur++;
+		        if (*lex->cur == '"') lex->cur++;
+		    }
+			else
+			{
+		        // Read until closing quote or newline/EOF
+		        while (*lex->cur != '"' && *lex->cur != '\n' && *lex->cur != EOF)
+				{
+		            if (len + 1 >= cap)
+					{
+		                cap *= 2;
+		                char *new_buf = realloc(buffer, cap);
+		                if (!new_buf)
+						{
+		                    free(buffer);
+		                    buffer = NULL;
+		                    break;
+		                }
+		                buffer = new_buf;
+		            }
+
+					if (*lex->cur == '\\')
+					{
+		                // Escape sequence – simplified handling
+		                lex->cur++;
+		                switch (*lex->cur)
+						{
+		                    case 'n': buffer[len++] = '\n'; break;
+							case 'f': buffer[len++] = '\f'; break;
+							case 'v': buffer[len++] = '\v'; break;
+		                    case 't': buffer[len++] = '\t'; break;
+		                    case '"': buffer[len++] = '"'; break;
+		                    case '\\': buffer[len++] = '\\'; break;
+		                    // Add more escapes
+		                    default: buffer[len++] = *lex->cur; break;
+		                }
+		                lex->cur++;
+		            }
+					else buffer[len++] = *lex->cur++;
+		        }
+				if (buffer) {
+		            buffer[len] = '\0';
+		            // Check if we terminated correctly
+		            if (*lex->cur != '"') {
+		                // Unterminated string
+		                free(buffer);
+		                new_token.type = ERR_TOKEN;
+		                // Skip to newline or EOF to recover
+		                while (*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+		            } else {
+		                // Consume closing quote
+		                lex->cur++;
+		                // Intern the string
+		                const char* interned = stringIntern_find(str_literal_intern, buffer);
+		                if (!interned) {
+		                    intern_append(str_literal_intern, buffer);
+		                    interned = str_literal_intern->string[str_literal_intern->length - 1];
+		                }
+		                new_token.type = LIT_STR;
+		                new_token.data.str_val = (char*)interned;
+		                free(buffer); // buffer no longer needed
+		            }
+		        }
+				else
+				{
+		            // Allocation failed
+		            new_token.type = ERR_TOKEN;
+		            // Skip to closing quote or newline
+		            while (*lex->cur != '"' && *lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+		            if (*lex->cur == '"') lex->cur++;
+		        }
+		    }
+		}
+		else if (is_single('\''))
+		{
+			lex->cur++; // consume opening quote
+			if (*lex->cur == '\'' || *lex->cur == '\n' || *lex->cur == EOF)
+			{
+				// empty or unclosed character literal
+				new_token.type = ERR_TOKEN;
+				while (*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+			}
+			else
+			{
+				char value;
+				if (*lex->cur == '\\')
+				{
+				    lex->cur++; // consume backslash
+					if (*lex->cur == EOF || *lex->cur == '\n')
+					{
+				        new_token.type = ERR_TOKEN;
+				        while (*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+				    }
+					else
+					{
+				        switch (*lex->cur)
+						{
+				            case 'n':  value = '\n'; break;
+				            case 't':  value = '\t'; break;
+				            case 'r':  value = '\r'; break;
+				            case '\\': value = '\\'; break;
+				            case '\'': value = '\''; break;
+				            case '"':  value = '"';  break;
+				            default:   value = *lex->cur; break;
+				        }
+				        lex->cur++; // consume the escaped character
+				        // expect closing quote
+						if (*lex->cur == '\'')
+						{
+				            lex->cur++;
+				            new_token.type = LIT_CHAR;
+				            new_token.data.char_val = value;
+				        }
+						else
+						{
+				            new_token.type = ERR_TOKEN;
+				            while (*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+				        }
+				    }
+				}
+				else
+				{
+				    value = *lex->cur;
+				    lex->cur++;
+					if (*lex->cur == '\'')
+					{
+				        lex->cur++;
+				        new_token.type = LIT_CHAR;
+				        new_token.data.char_val = value;
+				    }
+					else
+					{
+				        new_token.type = ERR_TOKEN;
+				        while (*lex->cur != '\n' && *lex->cur != EOF) lex->cur++;
+				    }
+				}
 			}
 		}
 		else if (is_single('#'))
