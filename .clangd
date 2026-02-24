@@ -1,0 +1,5 @@
+#config file for clangd language server to correctly find needed headers on Windows. I used
+# gcc to compile.
+
+CompileFlags:
+  Add: [-xc, -IC:\msys64\usr\include]
