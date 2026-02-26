@@ -7,6 +7,7 @@
 		AST_FUNCTION,
 		AST_RETURN_STMT,
 		AST_INT_CONST,
+		AST_STR_LIT
 	} astNodeType;
 
 	typedef struct ASTNode astNode;
@@ -21,8 +22,9 @@
 				char *name;
 				astNode *body;
 			} function;
-			struct { astNode *expr;} return_stmt;
-			struct {long value;} constant;
+			struct { astNode *expr;} 	 return_stmt;
+			struct {long value;} 		int_constant;
+			struct {const char* value;}   string_lit;
 		} nodeData;
 	};
 

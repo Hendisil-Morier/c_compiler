@@ -1,7 +1,6 @@
 #ifndef TOKEN_DATATYPE_H
 #define TOKEN_DATATYPE_H
 
-	#include "error.h"
 	#include <stddef.h>
 	typedef enum
 	{
