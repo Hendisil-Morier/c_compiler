@@ -33,7 +33,7 @@ static Token* look(Parser* parser)
 	return &parser->list->tklist[parser->position];
 }
 
-inline bool is_expr(TokenType type)
+bool is_expr(TokenType type)
 {
 	switch(type)
 	{
@@ -53,7 +53,7 @@ static Status advance(Parser* parser)
 	return SUCCESS;
 }
 
-inline Status expect(TokenType expected, TokenType actual)
+static Status expect(TokenType expected, TokenType actual)
 {
 	if (actual != expected)
 	{
@@ -64,7 +64,7 @@ inline Status expect(TokenType expected, TokenType actual)
 	return SUCCESS;
 }
 
-//parse expresion (recursive soon) and ADVANCE
+//parse expresion (recursive soon, int const for now) and ADVANCE
 astNode* parse_expr(Parser* parser)
 {
 	if (parser == NULL) return NULL;
