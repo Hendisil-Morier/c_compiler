@@ -194,6 +194,7 @@ astNode* parse_return(Parser* parser)
 	return NULL;
 }
 
+//exactly on the tin. expect & advance
 static Status expect_advance(Parser* parser, TokenType expected)
 {
 	if (parser == NULL) return FAILURE;
@@ -228,70 +229,39 @@ astNode* parse_function(Parser* parser)
 	Token* back = glance_back(parser);
 	func_name = back->data.iden_name;
 
-	//advance and check if the next one is an identifier.
-	st = advance(parser);
-	if (status_isequal(st, FAILURE)) return NULL;
-	st = expect(IDENTIFIER, cur);
+	st = expect_advance(parser, OPEN_PAREN);
 	if(status_isequal(st, FAILURE)) return NULL;
-	func_name = cur->data.iden_name;
 
-	//advance and check open paren
-	st = advance(parser);
-	if (status_isequal(st, FAILURE)) return NULL;
-	cur = look(parser);
-	if (cur == NULL) return NULL;
-	st = expect(OPEN_PAREN, cur);
-	if (status_isequal(st, FAILURE)) return NULL;
+	st = expect_advance(parser, CLOSE_PAREN);
+	if(status_isequal(st, FAILURE)) return NULL;
 
-	//closing paren
-	st = advance(parser);
-	if(status_isequal(st, FAILURE)) return NULL; //wth why's there so much safety check??
-	cur = look(parser);
-	if (cur == NULL) return NULL;
-	st = expect(CLOSE_BRACE, cur);
-	if (status_isequal(st, FAILURE)) return NULL;
-
-	//advance and check open brace.
-	st = advance(parser);
-	if (status_isequal(st, FAILURE)) return NULL;
-	cur = look(parser);
-	if(cur->type != OPEN_BRACE) return NULL;
-
-	//or check semicolon for forward declaring.
-	if (cur->type == SEMI)
+	st = expect_advance(parser, OPEN_BRACE);
+	if(status_isequal(st, FAILURE))
 	{
+		st = expect_advance(parser, SEMI);
+		if(status_isequal(st, FAILURE)) return NULL;
+
 		func_node = malloc(sizeof(astNode));
 		if (func_node == NULL) return NULL;
 
 		func_node->type = AST_FUNCTION;
 		func_node->nodeData.function.name = func_name;
 		func_node->nodeData.function.body = NULL;
+
+		return func_node;
 	}
 
-	/*
-	 *  only return statement for now.
-	 * and how should i handle multiple expressions in the future
-	 * tho? if-else chain only evaluate once.
-	 */
-	st = advance(parser);
-	if (status_isequal(st, FAILURE)) return NULL;
-	cur = look(parser);
-	if (cur->type == KEYW_RETURN)
-	{
-		return_node = parse_return(parser); //no need to call advance here.
-		if(return_node == NULL) return NULL;
-	}
-	else return NULL;
+	st = expect_advance(parser, KEYW_RETURN);
+	if(status_isequal(st, FAILURE)) return NULL;
 
-	cur = look(parser);
-	if (cur == NULL || cur->type != CLOSE_BRACE) //if cur null then i'll blow up
-	{
-		free(return_node);
-		return NULL;
-	}
+	return_node = parse_return(parser);
+	if(return_node == NULL) return NULL;
+
+	st = expect_advance(parser, CLOSE_BRACE);
+	if(status_isequal(st, FAILURE)) {free_ast(return_node); return NULL;}
 
 	func_node = malloc(sizeof(astNode));
-	if(func_node == NULL) {free(return_node); return NULL;}
+	if(func_node == NULL) {free_ast(return_node); return NULL;}
 
 	func_node->type = AST_FUNCTION;
 	func_node->nodeData.function.name = func_name;
