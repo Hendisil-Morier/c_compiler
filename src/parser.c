@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-
 typedef struct
 {
 	TokenList * list;
@@ -23,14 +22,42 @@ static Token* peek(Parser* parser)
 	return &parser->list->tklist[parser->position + 1];
 }
 
+static Token* glance_back(Parser* parser)
+{
+	if (parser == NULL || parser->position == 0) return NULL;
+
+	return &parser->list->tklist[parser->position - 1];
+}
+
 //look at the current token without consuming
 static Token* look(Parser* parser)
 {
 
 	if (parser == NULL) return NULL;
-	if (parser->position >= parser->list->length) return NULL;
+	if (parser->position > parser->list->length) return NULL;
 
 	return &parser->list->tklist[parser->position];
+}
+
+void free_ast(astNode* node)
+{
+	if (node == NULL) return;
+	switch(node->type)
+	{
+	case AST_FUNCTION:
+		free_ast(node->nodeData.function.body);
+		break;
+	case AST_PROGRAM:
+		free_ast(node->nodeData.program.function);
+		break;
+	case AST_RETURN_STMT:
+		free_ast(node->nodeData.return_stmt.expr);
+		break;
+	default:
+		break;
+	}
+
+	free(node);
 }
 
 bool is_expr(TokenType type)
@@ -38,6 +65,23 @@ bool is_expr(TokenType type)
 	switch(type)
 	{
 	case LIT_INT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool is_type(TokenType type)
+{
+	switch(type)
+	{
+	case KEYW_INT:
+	case KEYW_CHAR:
+	case KEYW_LONG:
+	case KEYW_VOID:
+	case KEYW_DOUBLE:
+	case KEYW_FLOAT:
+	case KEYW_UNSIGNED:
 		return true;
 	default:
 		return false;
@@ -53,11 +97,18 @@ static Status advance(Parser* parser)
 	return SUCCESS;
 }
 
-static Status expect(TokenType expected, TokenType actual)
+static Status expect(TokenType expected, Token* actual_t)
 {
+	if (actual_t == NULL)
+	{
+		fprintf(stderr, "Something sussy in the compiler code: [expect] function called with null pointer.");
+		return FAILURE;
+	}
+	TokenType actual = actual_t->type;
 	if (actual != expected)
 	{
-		printf("Expected %s, found %s.\n", token_type_name(expected), token_type_name(actual));
+		printf("Expected %s, found %s at line %d.\n",
+		token_type_name(expected), token_type_name(actual), actual_t->line);
 		return FAILURE;
 	}
 
@@ -72,7 +123,7 @@ astNode* parse_expr(Parser* parser)
 	if (cur==NULL) return NULL;
 	Status st = FAILURE;
 
-	st = expect(LIT_INT, cur->type);
+	st = expect(LIT_INT, cur);
 
 	if (status_isequal(st, FAILURE)) return NULL;
 	int value = cur->data.int_val;
@@ -91,25 +142,28 @@ astNode* parse_expr(Parser* parser)
 astNode* parse_return(Parser* parser)
 {
 	if (parser == NULL) return NULL;
-	TokenType type = parser->list->tklist[parser->position].type;
+	//TokenType type = parser->list->tklist[parser->position].type;
+	Token* cur = look(parser);
 	Status st = FAILURE;
 
-	st = expect(KEYW_RETURN, type);
+	st = expect(KEYW_RETURN, cur);
 	if (status_isequal(st, FAILURE)) return NULL;
 
 	st = advance(parser);
 	if(status_isequal(st,FAILURE)) return NULL;
 
-	Token* cur = look(parser);
+
 	if (cur == NULL) return NULL;
 
 	if (is_expr(cur->type) == false)
 	{
-		st = expect(SEMI, cur->type);
+		st = expect(SEMI, cur);
 		if (status_isequal(st, FAILURE)) return NULL;
-		advance(parser);
+
 		astNode* return_node = malloc(sizeof(astNode));
 		if (return_node == NULL) return NULL;
+
+		advance(parser);
 
 		return_node->type = AST_RETURN_STMT;
 		return_node->nodeData.return_stmt.expr = NULL;
@@ -118,18 +172,19 @@ astNode* parse_return(Parser* parser)
 	}
 	else
 	{
-
 		astNode* expr_node = parse_expr(parser);
 		if (expr_node == NULL) return NULL;
 
 		Token* next = look(parser);
-		if (next == NULL) return NULL;
-		st = expect(SEMI, next->type);
-		if (status_isequal(st, FAILURE)) return NULL;
-		advance(parser);
+		if (next == NULL) {free(expr_node); return NULL;}
+		st = expect(SEMI, next);
+		if (status_isequal(st, FAILURE)) {free(expr_node); return NULL;}
+
 
 		astNode* return_node = malloc(sizeof(astNode));
-		if (return_node == NULL) return NULL;
+		if (return_node == NULL) {free(expr_node); return NULL;}
+
+		advance(parser);
 
 		return_node->type = AST_RETURN_STMT;
 		return_node->nodeData.return_stmt.expr = expr_node;
@@ -137,4 +192,112 @@ astNode* parse_return(Parser* parser)
 	}
 
 	return NULL;
+}
+
+static Status expect_advance(Parser* parser, TokenType expected)
+{
+	if (parser == NULL) return FAILURE;
+
+	Token* cur = look(parser);
+	if (cur == NULL) return FAILURE;
+
+	Status st = expect(expected, cur);
+	if (status_isequal(st, FAILURE)) return FAILURE;
+
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return FAILURE;
+
+	return SUCCESS;
+}
+
+astNode* parse_function(Parser* parser)
+{
+	//initial pointer validation
+	if (parser == NULL) return NULL;
+	Token* cur = look(parser);
+	if(cur==NULL) return NULL;
+	const char* func_name = NULL;
+	astNode* func_node = NULL;
+	astNode* return_node = NULL;
+
+	if (is_type(cur->type) == false) return NULL; //check if the current token is a type token
+	Status st = FAILURE;
+
+	st = expect_advance(parser, IDENTIFIER);
+	if(status_isequal(st, FAILURE)) return NULL;
+	Token* back = glance_back(parser);
+	func_name = back->data.iden_name;
+
+	//advance and check if the next one is an identifier.
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return NULL;
+	st = expect(IDENTIFIER, cur);
+	if(status_isequal(st, FAILURE)) return NULL;
+	func_name = cur->data.iden_name;
+
+	//advance and check open paren
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return NULL;
+	cur = look(parser);
+	if (cur == NULL) return NULL;
+	st = expect(OPEN_PAREN, cur);
+	if (status_isequal(st, FAILURE)) return NULL;
+
+	//closing paren
+	st = advance(parser);
+	if(status_isequal(st, FAILURE)) return NULL; //wth why's there so much safety check??
+	cur = look(parser);
+	if (cur == NULL) return NULL;
+	st = expect(CLOSE_BRACE, cur);
+	if (status_isequal(st, FAILURE)) return NULL;
+
+	//advance and check open brace.
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return NULL;
+	cur = look(parser);
+	if(cur->type != OPEN_BRACE) return NULL;
+
+	//or check semicolon for forward declaring.
+	if (cur->type == SEMI)
+	{
+		func_node = malloc(sizeof(astNode));
+		if (func_node == NULL) return NULL;
+
+		func_node->type = AST_FUNCTION;
+		func_node->nodeData.function.name = func_name;
+		func_node->nodeData.function.body = NULL;
+	}
+
+	/*
+	 *  only return statement for now.
+	 * and how should i handle multiple expressions in the future
+	 * tho? if-else chain only evaluate once.
+	 */
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return NULL;
+	cur = look(parser);
+	if (cur->type == KEYW_RETURN)
+	{
+		return_node = parse_return(parser); //no need to call advance here.
+		if(return_node == NULL) return NULL;
+	}
+	else return NULL;
+
+	cur = look(parser);
+	if (cur == NULL || cur->type != CLOSE_BRACE) //if cur null then i'll blow up
+	{
+		free(return_node);
+		return NULL;
+	}
+
+	func_node = malloc(sizeof(astNode));
+	if(func_node == NULL) {free(return_node); return NULL;}
+
+	func_node->type = AST_FUNCTION;
+	func_node->nodeData.function.name = func_name;
+	func_node->nodeData.function.body = return_node;
+
+	return func_node;
+	//what with all that excessive null check? are we mental?
+	//who's we?
 }

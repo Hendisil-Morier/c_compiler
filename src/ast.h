@@ -19,12 +19,12 @@
 			struct {astNode *function;} program;
 			struct
 			{
-				char *name;
+				const char *name; //owned by string interner, do not free.
 				astNode *body;
 			} function;
 			struct { astNode *expr;} 	 return_stmt;
 			struct {long value;} 		int_constant;
-			struct {const char* value;}   string_lit;
+			struct {const char* value;}   string_lit; //owned by string interner, do not free.
 		} nodeData;
 	};
 
