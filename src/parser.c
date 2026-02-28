@@ -5,11 +5,20 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+//i might be a genius ngl
+#define expect(parser, expected) (__expect(parser, expected, 0))
+#define q_expect(parser, expected) (__expect(parser, expected, 1))
+
+#define expect_advance(parser, expected) (__expect_advance(parser, expected, 0))
+#define q_expect_advance(parser, expected) (__expect_advance(parser, expected, 1))
+
 typedef struct
 {
 	TokenList * list;
 	int position;
 } Parser;
+
+
 
 extern const char* token_type_name(TokenType t);
 
@@ -22,7 +31,8 @@ static Token* peek(Parser* parser)
 	return &parser->list->tklist[parser->position + 1];
 }
 
-static Token* glance_back(Parser* parser)
+//peak movie btw. you should watch it at least once.
+static Token* look_back(Parser* parser)
 {
 	if (parser == NULL || parser->position == 0) return NULL;
 
@@ -34,7 +44,7 @@ static Token* look(Parser* parser)
 {
 
 	if (parser == NULL) return NULL;
-	if (parser->position > parser->list->length) return NULL;
+	if (parser->position >= parser->list->length) return NULL;
 
 	return &parser->list->tklist[parser->position];
 }
@@ -97,17 +107,26 @@ static Status advance(Parser* parser)
 	return SUCCESS;
 }
 
-static Status expect(TokenType expected, Token* actual_t)
+//pass 1 to enable quiet mode: the third error wont be printed.
+static Status __expect(Parser* parser, TokenType expected, bool quiet_mode)
 {
-	if (actual_t == NULL)
+	if (parser == NULL)
 	{
 		fprintf(stderr, "Something sussy in the compiler code: [expect] function called with null pointer.");
 		return FAILURE;
 	}
+
+	Token* actual_t = look(parser);
+	if(actual_t == NULL)
+	{
+		fprintf(stderr, "Unexpected EOF error type shi my man.\n");
+		return FAILURE;
+	}
+
 	TokenType actual = actual_t->type;
 	if (actual != expected)
 	{
-		printf("Expected %s, found %s at line %d.\n",
+		if (quiet_mode == 0) fprintf(stderr, "Expected %s, found %s at line %d. type shi\n",
 		token_type_name(expected), token_type_name(actual), actual_t->line);
 		return FAILURE;
 	}
@@ -123,7 +142,7 @@ astNode* parse_expr(Parser* parser)
 	if (cur==NULL) return NULL;
 	Status st = FAILURE;
 
-	st = expect(LIT_INT, cur);
+	st = expect(parser, LIT_INT);
 
 	if (status_isequal(st, FAILURE)) return NULL;
 	int value = cur->data.int_val;
@@ -138,32 +157,57 @@ astNode* parse_expr(Parser* parser)
 	return expr_node;
 }
 
+
+
+//exactly on the tin. expect & advance.
+static Status __expect_advance(Parser* parser, TokenType expected, bool quiet_mode)
+{
+	if (parser == NULL) return FAILURE;
+
+	Token* cur = look(parser);
+	if (cur == NULL) return FAILURE;
+
+	Status st = FAILURE;
+
+	st = quiet_mode? q_expect(parser, expected) : expect(parser, expected);
+
+	if (status_isequal(st, FAILURE)) return FAILURE;
+
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return FAILURE;
+	return SUCCESS;
+}
+
 //parse return statement and ADVANCE
 astNode* parse_return(Parser* parser)
 {
 	if (parser == NULL) return NULL;
 	//TokenType type = parser->list->tklist[parser->position].type;
-	Token* cur = look(parser);
 	Status st = FAILURE;
 
-	st = expect(KEYW_RETURN, cur);
-	if (status_isequal(st, FAILURE)) return NULL;
+/*
+ *	making sure the previous token is return keyword since
+ * this start with return's statement.
+ * 	return_keyw expr;
+ * 				^
+ * 	the function start here.
+ */
+	Token* cur = look_back(parser);
+	if (cur==NULL) return NULL;
 
-	st = advance(parser);
-	if(status_isequal(st,FAILURE)) return NULL;
+	if (cur->type != KEYW_RETURN) return NULL;
 
-
+	// back to current token
+	cur = look(parser);
 	if (cur == NULL) return NULL;
 
 	if (is_expr(cur->type) == false)
 	{
-		st = expect(SEMI, cur);
+		st = expect_advance(parser, SEMI);
 		if (status_isequal(st, FAILURE)) return NULL;
 
 		astNode* return_node = malloc(sizeof(astNode));
 		if (return_node == NULL) return NULL;
-
-		advance(parser);
 
 		return_node->type = AST_RETURN_STMT;
 		return_node->nodeData.return_stmt.expr = NULL;
@@ -175,16 +219,11 @@ astNode* parse_return(Parser* parser)
 		astNode* expr_node = parse_expr(parser);
 		if (expr_node == NULL) return NULL;
 
-		Token* next = look(parser);
-		if (next == NULL) {free(expr_node); return NULL;}
-		st = expect(SEMI, next);
-		if (status_isequal(st, FAILURE)) {free(expr_node); return NULL;}
-
+		st = expect_advance(parser, SEMI);
+		if (status_isequal(st, FAILURE)) {free_ast(expr_node); return NULL;}
 
 		astNode* return_node = malloc(sizeof(astNode));
-		if (return_node == NULL) {free(expr_node); return NULL;}
-
-		advance(parser);
+		if (return_node == NULL) {free_ast(expr_node); return NULL;}
 
 		return_node->type = AST_RETURN_STMT;
 		return_node->nodeData.return_stmt.expr = expr_node;
@@ -194,22 +233,6 @@ astNode* parse_return(Parser* parser)
 	return NULL;
 }
 
-//exactly on the tin. expect & advance
-static Status expect_advance(Parser* parser, TokenType expected)
-{
-	if (parser == NULL) return FAILURE;
-
-	Token* cur = look(parser);
-	if (cur == NULL) return FAILURE;
-
-	Status st = expect(expected, cur);
-	if (status_isequal(st, FAILURE)) return FAILURE;
-
-	st = advance(parser);
-	if (status_isequal(st, FAILURE)) return FAILURE;
-
-	return SUCCESS;
-}
 
 astNode* parse_function(Parser* parser)
 {
@@ -223,10 +246,12 @@ astNode* parse_function(Parser* parser)
 
 	if (is_type(cur->type) == false) return NULL; //check if the current token is a type token
 	Status st = FAILURE;
+	st = advance(parser);
+	if (status_isequal(st, FAILURE)) return NULL;
 
 	st = expect_advance(parser, IDENTIFIER);
 	if(status_isequal(st, FAILURE)) return NULL;
-	Token* back = glance_back(parser);
+	Token* back = look_back(parser);
 	func_name = back->data.iden_name;
 
 	st = expect_advance(parser, OPEN_PAREN);
@@ -235,7 +260,7 @@ astNode* parse_function(Parser* parser)
 	st = expect_advance(parser, CLOSE_PAREN);
 	if(status_isequal(st, FAILURE)) return NULL;
 
-	st = expect_advance(parser, OPEN_BRACE);
+	st = q_expect_advance(parser, OPEN_BRACE);
 	if(status_isequal(st, FAILURE))
 	{
 		st = expect_advance(parser, SEMI);
