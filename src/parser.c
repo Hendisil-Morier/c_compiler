@@ -18,8 +18,6 @@ typedef struct
 	int position;
 } Parser;
 
-
-
 extern const char* token_type_name(TokenType t);
 
 //peek at the next token without consuming.
@@ -184,20 +182,11 @@ astNode* parse_return(Parser* parser)
 	if (parser == NULL) return NULL;
 	//TokenType type = parser->list->tklist[parser->position].type;
 	Status st = FAILURE;
+	Token* cur = NULL;
 
-/*
- *	making sure the previous token is return keyword since
- * this start with return's statement.
- * 	return_keyw expr;
- * 				^
- * 	the function start here.
- */
-	Token* cur = look_back(parser);
-	if (cur==NULL) return NULL;
+	st = expect_advance(parser, KEYW_RETURN);
+	if (status_isequal(st, FAILURE)) return NULL;
 
-	if (cur->type != KEYW_RETURN) return NULL;
-
-	// back to current token
 	cur = look(parser);
 	if (cur == NULL) return NULL;
 
@@ -233,13 +222,39 @@ astNode* parse_return(Parser* parser)
 	return NULL;
 }
 
+astNode* parse_statment(Parser* parser)
+{
+	if (!parser || !look(parser)) return NULL;
+	switch(look(parser)->type)
+	{
+	case KEYW_RETURN:
+		return parse_return(parser);
+	default:
+		return NULL;
+	}
+}
+
+astNode* parse_block(Parser* parser)
+{
+	if (!parser || !look(parser)) return NULL;
+	Status st = FAILURE;
+
+	st = expect_advance(parser, OPEN_BRACE);
+	if (status_isequal(st, FAILURE)) return NULL;
+
+	while(look(parser) || look(parser)->type != CLOSE_BRACE)
+	{
+
+	}
+
+}
+
 
 astNode* parse_function(Parser* parser)
 {
 	//initial pointer validation
-	if (parser == NULL) return NULL;
+	if (!parser || !look(parser)) return NULL;
 	Token* cur = look(parser);
-	if(cur==NULL) return NULL;
 	const char* func_name = NULL;
 	astNode* func_node = NULL;
 	astNode* return_node = NULL;
@@ -276,9 +291,6 @@ astNode* parse_function(Parser* parser)
 		return func_node;
 	}
 
-	st = expect_advance(parser, KEYW_RETURN);
-	if(status_isequal(st, FAILURE)) return NULL;
-
 	return_node = parse_return(parser);
 	if(return_node == NULL) return NULL;
 
@@ -295,4 +307,9 @@ astNode* parse_function(Parser* parser)
 	return func_node;
 	//what with all that excessive null check? are we mental?
 	//who's we?
+}
+
+astNode* parse_program(Parser* parser) //root of the tree
+{
+	if (parser == NULL) return NULL;
 }
