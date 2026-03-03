@@ -12,11 +12,7 @@
 #define expect_advance(parser, expected) (__expect_advance(parser, expected, 0))
 #define q_expect_advance(parser, expected) (__expect_advance(parser, expected, 1))
 
-typedef struct
-{
-	TokenList * list;
-	int position;
-} Parser;
+
 
 extern const char* token_type_name(TokenType t);
 
@@ -60,6 +56,12 @@ void free_ast(astNode* node)
 		break;
 	case AST_RETURN_STMT:
 		free_ast(node->nodeData.return_stmt.expr);
+		break;
+	case AST_BLOCK:
+		if (!node->nodeData.block.statements) break;
+		for(size_t i = 0; i < node->nodeData.block.count; i++)
+			free_ast(node->nodeData.block.statements[i]);
+		free(node->nodeData.block.statements);
 		break;
 	default:
 		break;
@@ -222,7 +224,7 @@ astNode* parse_return(Parser* parser)
 	return NULL;
 }
 
-astNode* parse_statment(Parser* parser)
+astNode* parse_statement(Parser* parser)
 {
 	if (!parser || !look(parser)) return NULL;
 	switch(look(parser)->type)
@@ -242,11 +244,56 @@ astNode* parse_block(Parser* parser)
 	st = expect_advance(parser, OPEN_BRACE);
 	if (status_isequal(st, FAILURE)) return NULL;
 
-	while(look(parser) || look(parser)->type != CLOSE_BRACE)
+	astNode* block_node = malloc(sizeof(astNode));
+	if (!block_node) return NULL;
+	block_node->type = AST_BLOCK;
+	size_t* c = &block_node->nodeData.block.capacity;
+	size_t* i = &block_node->nodeData.block.count;
+	*i = 0;
+	*c = 8;
+
+	astNode** stmt_list = calloc(*c, sizeof(astNode*));
+	if (!stmt_list) {free(block_node); return NULL;}
+
+	//while the current token != null or not a '}'
+	while(1)
 	{
-
+		Token* cur = look(parser);
+		if (!cur || cur->type == CLOSE_BRACE) break;
+		if (*i >= *c)
+		{
+			size_t new_cap = *c * 3 / 2 + 1;
+			astNode** tmp_list = realloc(stmt_list, new_cap * sizeof(astNode*));
+			if (!tmp_list)
+			{
+				for(size_t j = 0; j < *i; j++)
+					if (stmt_list[j]) free_ast(stmt_list[j]);
+				free(stmt_list);
+				free(block_node);
+				return NULL;
+			}
+			*c = new_cap;
+			stmt_list = tmp_list;
+		}
+		astNode* statement = parse_statement(parser);
+		if (!statement)
+		{
+			for (size_t j = 0; j < *i; j++)
+				if(stmt_list[j]) free_ast(stmt_list[j]);
+			free(stmt_list);
+			free(block_node);
+			return NULL;
+		}
+		stmt_list[*i++] = statement;
 	}
+	block_node->nodeData.block.statements = stmt_list;
 
+	st = expect_advance(parser, CLOSE_BRACE);
+	if (status_isequal(st, FAILURE))
+		{free_ast(block_node); return NULL;}
+
+
+	return block_node;
 }
 
 
@@ -257,9 +304,9 @@ astNode* parse_function(Parser* parser)
 	Token* cur = look(parser);
 	const char* func_name = NULL;
 	astNode* func_node = NULL;
-	astNode* return_node = NULL;
 
 	if (is_type(cur->type) == false) return NULL; //check if the current token is a type token
+	TokenType return_type = cur->type;
 	Status st = FAILURE;
 	st = advance(parser);
 	if (status_isequal(st, FAILURE)) return NULL;
@@ -275,7 +322,7 @@ astNode* parse_function(Parser* parser)
 	st = expect_advance(parser, CLOSE_PAREN);
 	if(status_isequal(st, FAILURE)) return NULL;
 
-	st = q_expect_advance(parser, OPEN_BRACE);
+	st = q_expect(parser, OPEN_BRACE);
 	if(status_isequal(st, FAILURE))
 	{
 		st = expect_advance(parser, SEMI);
@@ -286,30 +333,39 @@ astNode* parse_function(Parser* parser)
 
 		func_node->type = AST_FUNCTION;
 		func_node->nodeData.function.name = func_name;
+		func_node->nodeData.function.return_type = return_type;
 		func_node->nodeData.function.body = NULL;
 
 		return func_node;
 	}
 
-	return_node = parse_return(parser);
-	if(return_node == NULL) return NULL;
-
-	st = expect_advance(parser, CLOSE_BRACE);
-	if(status_isequal(st, FAILURE)) {free_ast(return_node); return NULL;}
+	astNode* body_node = parse_block(parser);
 
 	func_node = malloc(sizeof(astNode));
-	if(func_node == NULL) {free_ast(return_node); return NULL;}
+	if(func_node == NULL) {free_ast(body_node); return NULL;}
 
 	func_node->type = AST_FUNCTION;
+	func_node->nodeData.function.return_type = return_type;
 	func_node->nodeData.function.name = func_name;
-	func_node->nodeData.function.body = return_node;
+	func_node->nodeData.function.body = body_node;
 
 	return func_node;
 	//what with all that excessive null check? are we mental?
 	//who's we?
 }
 
-astNode* parse_program(Parser* parser) //root of the tree
+astNode* parse_program(Parser* parser) //root of the tree, wip
 {
-	if (parser == NULL) return NULL;
+	if (!parser || !look(parser)) return NULL;
+
+	astNode* prog_node = malloc(sizeof(astNode));
+	if (!prog_node) return NULL;
+
+	astNode* main_func = parse_function(parser);
+	if (!main_func) {free(prog_node); return NULL;}
+
+	prog_node->nodeData.program.function = main_func;
+	prog_node->type = AST_PROGRAM;
+
+	return prog_node;
 }
