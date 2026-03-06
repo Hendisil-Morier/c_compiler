@@ -12,8 +12,6 @@
 #define expect_advance(parser, expected) (__expect_advance(parser, expected, 0))
 #define q_expect_advance(parser, expected) (__expect_advance(parser, expected, 1))
 
-
-
 extern const char* token_type_name(TokenType t);
 
 //peek at the next token without consuming.
@@ -52,7 +50,10 @@ void free_ast(astNode* node)
 		free_ast(node->nodeData.function.body);
 		break;
 	case AST_PROGRAM:
-		free_ast(node->nodeData.program.function);
+      for (size_t i = 0; i < node->nodeData.program.count; i++)
+      {
+		    free_ast(node->nodeData.program.function[i]);
+      }
 		break;
 	case AST_RETURN_STMT:
 		free_ast(node->nodeData.return_stmt.expr);
@@ -364,7 +365,7 @@ astNode* parse_program(Parser* parser) //root of the tree, wip
 	astNode* main_func = parse_function(parser);
 	if (!main_func) {free(prog_node); return NULL;}
 
-	prog_node->nodeData.program.function = main_func;
+	prog_node->nodeData.program.function[0] = main_func; //only handle 1 main functiuon for now
 	prog_node->type = AST_PROGRAM;
 
 	return prog_node;

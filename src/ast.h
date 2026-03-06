@@ -24,7 +24,13 @@
 		astNodeType type;
 		union
 		{
-			struct {astNode *function;} program;
+			struct
+      {
+        astNode **function;
+        size_t count;
+        size_t capacity;
+      } program;
+
 			struct
 			{
 				const char *name; //owned by string interner, do not free. public execution
@@ -55,6 +61,7 @@
 
 	typedef enum
 	{
+		NO_OPERAND,
 		OPERAND_IMM,
 		OPERAND_REG,
 	} OperandType;
@@ -73,27 +80,37 @@
 	{
 		INST_MOV,
 		INST_RET,
-	} InstructuctType;
+	} InstructType;
 
 	typedef struct
 	{
-		InstructuctType type;
+		InstructType type;
 		Operand src;
 		Operand dest;
 	} Instruct;
 
 	typedef struct
 	{
+		size_t count;
+		size_t capacity;
+		Instruct intrct_list[];
+	} InstructionList;
+
+	typedef struct
+	{
 		const char* name;
-		Instruct** instrucs;
-		size_t inst_count;
-		size_t inst_cap;
+		InstructionList* instructs;
 	} ASMfunction;
 
 	typedef struct
 	{
-		ASMfunction** functions;
-		size_t func_count;
-		size_t func_cap;
+		size_t count;
+		size_t capacity;
+		ASMfunction func_list[];
+	} ASMfunctionList;
+
+	typedef struct
+	{
+		ASMfunctionList* functions;
 	} ASMprogram;
 #endif
